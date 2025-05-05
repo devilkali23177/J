@@ -181,6 +181,16 @@
       justify-content: space-between;
     }
 
+    .entry-content {
+      background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+      background-size: 100% 1.5em;
+      background-attachment: local;
+      line-height: 1.5em;
+      padding: 0.5em 0;
+      white-space: pre-wrap;
+      font-family: 'Inter', sans-serif;
+    }
+
     .entry-actions {
       display: flex;
       gap: 0.5rem;
@@ -748,6 +758,99 @@
         </button>
       </div>
 
+      <!-- Edit Journal Entry Form -->
+      <div id="edit-journal-container" class="card hidden">
+        <h2><i class="fas fa-edit"></i> Edit Entry</h2>
+        <input type="text" id="edit-title" placeholder="Entry Title" />
+        <input type="date" id="edit-date" />
+        <textarea id="edit-content" rows="5" placeholder="Write your thoughts..."></textarea>
+        <div class="filters">
+          <div class="category-select-wrapper">
+            <select id="edit-category">
+              <option value="">Select Category</option>
+              <option value="Bad Memories / Bad Past Events">Bad Memories / Bad Past Events</option>
+              <option value="History / Past Reflections">History / Past Reflections</option>
+              <option value="Achievements">Achievements</option>
+              <option value="Plans / Dreams">Plans / Dreams</option>
+              <option value="Implementation / Action Steps">Implementation / Action Steps</option>
+              <!-- Custom categories will be added here -->
+            </select>
+            <button onclick="showEditCustomCategoryInput()" class="secondary" title="Add custom category">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+          <div id="edit-custom-category-container" class="hidden">
+            <div class="custom-category-input">
+              <input type="text" id="edit-new-category" placeholder="New category name" />
+              <button onclick="addEditCustomCategory()" class="secondary">
+                <i class="fas fa-check"></i> Add
+              </button>
+            </div>
+          </div>
+          <select id="edit-mood">
+            <option value="😊">😊 Happy</option>
+            <option value="😃">😃 Excited</option>
+            <option value="😄">😄 Joyful</option>
+            <option value="😁">😁 Grinning</option>
+            <option value="😆">😆 Laughing</option>
+            <option value="😐">😐 Neutral</option>
+            <option value="😑">😑 Expressionless</option>
+            <option value="😶">😶 Silent</option>
+            <option value="😏">😏 Smirking</option>
+            <option value="😕">😕 Confused</option>
+            <option value="😟">😟 Worried</option>
+            <option value="🙁">🙁 Slightly Sad</option>
+            <option value="😮">😮 Surprised</option>
+            <option value="😯">😯 Astonished</option>
+            <option value="😲">😲 Amazed</option>
+            <option value="😳">😳 Flushed</option>
+            <option value="😦">😦 Frowning</option>
+            <option value="😧">😧 Anguished</option>
+            <option value="😨">😨 Fearful</option>
+            <option value="😰">😰 Anxious</option>
+            <option value="😥">😥 Disappointed</option>
+            <option value="😢">😢 Sad</option>
+            <option value="😭">😭 Crying</option>
+            <option value="😱">😱 Screaming</option>
+            <option value="😖">😖 Confounded</option>
+            <option value="😣">😣 Persevering</option>
+            <option value="😞">😞 Disappointed</option>
+            <option value="😓">😓 Sweating</option>
+            <option value="😩">😩 Weary</option>
+            <option value="😫">😫 Tired</option>
+            <option value="😠">😠 Angry</option>
+            <option value="😡">😡 Pouting</option>
+            <option value="👿">👿 Imp</option>
+            <option value="💀">💀 Skull</option>
+            <option value="💩">💩 Poop</option>
+            <option value="🤡">🤡 Clown</option>
+            <option value="👹">👹 Ogre</option>
+            <option value="👺">👺 Goblin</option>
+            <option value="👻">👻 Ghost</option>
+            <option value="👽">👽 Alien</option>
+            <option value="🤖">🤖 Robot</option>
+            <option value="😺">😺 Grinning Cat</option>
+            <option value="😸">😸 Grinning Cat with Smiling Eyes</option>
+            <option value="😹">😹 Cat with Tears of Joy</option>
+            <option value="😻">😻 Smiling Cat with Heart-Eyes</option>
+            <option value="😼">😼 Cat with Wry Smile</option>
+            <option value="😽">😽 Kissing Cat</option>
+            <option value="🙀">🙀 Weary Cat</option>
+            <option value="😿">😿 Crying Cat</option>
+            <option value="😾">😾 Pouting Cat</option>
+          </select>
+        </div>
+        <input type="hidden" id="edit-entry-id">
+        <div class="btn-group">
+          <button onclick="saveEditedEntry()">
+            <i class="fas fa-save"></i> Save Changes
+          </button>
+          <button onclick="cancelEdit()" class="secondary">
+            <i class="fas fa-times"></i> Cancel
+          </button>
+        </div>
+      </div>
+
       <div class="card">
         <h2><i class="fas fa-filter"></i> Filter Entries</h2>
         <div class="filters">
@@ -1019,6 +1122,7 @@
     let journalRef;
     let financeRef;
     let tasksRef;
+    let customCategoriesRef;
     let customCategories = [];
     let categoryChartInstance = null;
     let moodChartInstance = null;
@@ -1044,6 +1148,14 @@
         journalRef = db.ref(`users/${user.uid}/journalEntries`);
         financeRef = db.ref(`users/${user.uid}/financeEntries`);
         tasksRef = db.ref(`users/${user.uid}/tasks`);
+        customCategoriesRef = db.ref(`users/${user.uid}/customCategories`);
+        
+        // Load custom categories
+        customCategoriesRef.on('value', (snapshot) => {
+          const data = snapshot.val();
+          customCategories = data ? Object.values(data) : [];
+          updateCategoryDropdowns();
+        });
         
         loadJournalEntries();
         loadFinanceEntries();
@@ -1055,6 +1167,55 @@
         showView('login-view');
       }
     });
+
+    // Update all category dropdowns with custom categories
+    function updateCategoryDropdowns() {
+      // Main category dropdown
+      updateDropdownWithCustomCategories('category');
+      
+      // Edit category dropdown
+      updateDropdownWithCustomCategories('edit-category');
+      
+      // Filter category dropdown
+      updateDropdownWithCustomCategories('filter-category');
+    }
+
+    function updateDropdownWithCustomCategories(dropdownId) {
+      const dropdown = document.getElementById(dropdownId);
+      if (!dropdown) return;
+      
+      // Remove all custom categories (keep the first option and default categories)
+      const defaultCategories = [
+        "Bad Memories / Bad Past Events",
+        "History / Past Reflections",
+        "Achievements",
+        "Plans / Dreams",
+        "Implementation / Action Steps"
+      ];
+      
+      // Keep the first option (Select Category or All Categories)
+      const firstOption = dropdown.options[0];
+      dropdown.innerHTML = '';
+      dropdown.appendChild(firstOption);
+      
+      // Add default categories
+      defaultCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        dropdown.appendChild(option);
+      });
+      
+      // Add custom categories
+      customCategories.forEach(category => {
+        if (!defaultCategories.includes(category)) {
+          const option = document.createElement('option');
+          option.value = category;
+          option.textContent = category;
+          dropdown.appendChild(option);
+        }
+      });
+    }
 
     // Auth View Management
     function showView(viewId) {
@@ -1166,44 +1327,61 @@
       document.getElementById('new-category').focus();
     }
 
+    function showEditCustomCategoryInput() {
+      document.getElementById('edit-custom-category-container').classList.remove('hidden');
+      document.getElementById('edit-new-category').focus();
+    }
+
     function addCustomCategory() {
       const newCategory = document.getElementById('new-category').value.trim();
       if (!newCategory) return;
 
-      // Add to custom categories if not already exists
-      if (!customCategories.includes(newCategory)) {
-        customCategories.push(newCategory);
+      // Check if category already exists
+      if (customCategories.includes(newCategory)) {
+        alert("This category already exists!");
+        return;
       }
 
-      // Add to category dropdown
-      addCategoryToDropdowns(newCategory);
-
-      // Select the new category
-      document.getElementById('category').value = newCategory;
-
-      // Hide the input and clear it
-      document.getElementById('custom-category-container').classList.add('hidden');
-      document.getElementById('new-category').value = '';
+      // Add to Firebase
+      customCategoriesRef.push(newCategory, (error) => {
+        if (error) {
+          console.error("Error adding category:", error);
+          alert("Failed to add category. Please try again.");
+        } else {
+          // Hide the input and clear it
+          document.getElementById('custom-category-container').classList.add('hidden');
+          document.getElementById('new-category').value = '';
+          
+          // Select the new category
+          document.getElementById('category').value = newCategory;
+        }
+      });
     }
 
-    function addCategoryToDropdowns(category) {
-      // Add to main category dropdown if not already exists
-      const categorySelect = document.getElementById('category');
-      if (!Array.from(categorySelect.options).some(opt => opt.value === category)) {
-        const option = document.createElement('option');
-        option.value = category;
-        option.textContent = category;
-        categorySelect.appendChild(option);
+    function addEditCustomCategory() {
+      const newCategory = document.getElementById('edit-new-category').value.trim();
+      if (!newCategory) return;
+
+      // Check if category already exists
+      if (customCategories.includes(newCategory)) {
+        alert("This category already exists!");
+        return;
       }
 
-      // Add to filter category dropdown if not already exists
-      const filterCategorySelect = document.getElementById('filter-category');
-      if (!Array.from(filterCategorySelect.options).some(opt => opt.value === category)) {
-        const option = document.createElement('option');
-        option.value = category;
-        option.textContent = category;
-        filterCategorySelect.appendChild(option);
-      }
+      // Add to Firebase
+      customCategoriesRef.push(newCategory, (error) => {
+        if (error) {
+          console.error("Error adding category:", error);
+          alert("Failed to add category. Please try again.");
+        } else {
+          // Hide the input and clear it
+          document.getElementById('edit-custom-category-container').classList.add('hidden');
+          document.getElementById('edit-new-category').value = '';
+          
+          // Select the new category in the edit form
+          document.getElementById('edit-category').value = newCategory;
+        }
+      });
     }
 
     async function addJournalEntry() {
@@ -1234,6 +1412,62 @@
         console.error("Error adding entry:", error);
         alert("Failed to save entry. Please try again.");
       }
+    }
+
+    function editJournalEntry(id) {
+      // Get the entry data
+      journalRef.child(id).once('value', (snapshot) => {
+        const entry = snapshot.val();
+        
+        // Populate the edit form
+        document.getElementById('edit-title').value = entry.title;
+        document.getElementById('edit-date').value = entry.date;
+        document.getElementById('edit-content').value = entry.content;
+        document.getElementById('edit-category').value = entry.category;
+        document.getElementById('edit-mood').value = entry.mood;
+        document.getElementById('edit-entry-id').value = id;
+        
+        // Show the edit form
+        document.getElementById('edit-journal-container').classList.remove('hidden');
+        
+        // Scroll to the edit form
+        document.getElementById('edit-journal-container').scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    async function saveEditedEntry() {
+      const id = document.getElementById('edit-entry-id').value;
+      const title = document.getElementById('edit-title').value;
+      const date = document.getElementById('edit-date').value;
+      const content = document.getElementById('edit-content').value;
+      const category = document.getElementById('edit-category').value;
+      const mood = document.getElementById('edit-mood').value;
+
+      if (!title || !date || !content || !category) {
+        alert("Please fill in all required fields.");
+        return;
+      }
+
+      const updatedEntry = { 
+        title, 
+        date, 
+        content, 
+        category, 
+        mood,
+        timestamp: Date.now() 
+      };
+      
+      try {
+        await journalRef.child(id).update(updatedEntry);
+        document.getElementById('edit-journal-container').classList.add('hidden');
+      } catch (error) {
+        console.error("Error updating entry:", error);
+        alert("Failed to update entry. Please try again.");
+      }
+    }
+
+    function cancelEdit() {
+      document.getElementById('edit-journal-container').classList.add('hidden');
     }
 
     function loadJournalEntries() {
@@ -1290,8 +1524,11 @@
           div.innerHTML = `
             <h3>${entry.title} <small>${entry.mood}</small></h3>
             <small>${entry.date} - <strong>${entry.category}</strong></small>
-            <p>${entry.content}</p>
+            <div class="entry-content">${entry.content}</div>
             <div class="entry-actions">
+              <button onclick="editJournalEntry('${entry.id}')" class="secondary">
+                <i class="fas fa-edit"></i> Edit
+              </button>
               <button onclick="deleteJournalEntry('${entry.id}')" class="danger">
                 <i class="fas fa-trash"></i> Delete
               </button>
@@ -1605,8 +1842,8 @@
             if (importedData.customCategories && Array.isArray(importedData.customCategories)) {
               importedData.customCategories.forEach(category => {
                 if (!customCategories.includes(category)) {
-                  customCategories.push(category);
-                  addCategoryToDropdowns(category);
+                  // Add to Firebase
+                  customCategoriesRef.push(category);
                 }
               });
             }
@@ -1705,8 +1942,11 @@
           div.innerHTML = `
             <h3>${entry.title} <small>${entry.mood}</small></h3>
             <small>${entry.date} - <strong>${entry.category}</strong></small>
-            <p>${entry.content}</p>
+            <div class="entry-content">${entry.content}</div>
             <div class="entry-actions">
+              <button onclick="editJournalEntry('${entry.id}')" class="secondary">
+                <i class="fas fa-edit"></i> Edit
+              </button>
               <button onclick="deleteJournalEntry('${entry.id}')" class="danger">
                 <i class="fas fa-trash"></i> Delete
               </button>
@@ -2078,7 +2318,12 @@
     window.toggleTheme = toggleTheme;
     window.showCustomCategoryInput = showCustomCategoryInput;
     window.addCustomCategory = addCustomCategory;
+    window.showEditCustomCategoryInput = showEditCustomCategoryInput;
+    window.addEditCustomCategory = addEditCustomCategory;
     window.addJournalEntry = addJournalEntry;
+    window.editJournalEntry = editJournalEntry;
+    window.saveEditedEntry = saveEditedEntry;
+    window.cancelEdit = cancelEdit;
     window.deleteJournalEntry = deleteJournalEntry;
     window.exportJournalEntries = exportJournalEntries;
     window.importJournalEntries = importJournalEntries;
